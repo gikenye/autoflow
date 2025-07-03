@@ -6,7 +6,7 @@
  */
 
 // Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||'';
 
 // Types
 export interface OnboardingData {
@@ -260,5 +260,5 @@ export function clearStoredUserData(): void {
  * Get the configured API base URL
  */
 export function getApiBaseUrl(): string {
-  return API_BASE_URL;
+  return API_BASE_URL ?? '';
 } 
