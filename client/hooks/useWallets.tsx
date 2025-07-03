@@ -8,6 +8,7 @@ import React, {
   type ReactNode,
 } from "react"
 import axios from "axios"
+import { fetchCircleWalletBalance } from "@/lib/circle-client"
 
 export interface User {
   address: string
@@ -67,12 +68,12 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             provider: "circle",
           })
 
-          // Mock card info for Circle users
+          // Set card info for Circle users
           setCardInfo({
             isLinked: true,
-            balance: 2000.00,
+            balance: userData.isExistingUser ? 1500.00 : 2000.00, // Simulate different balance for existing users
             limit: 5000,
-            lastFour: "9876",
+            lastFour: userData.isExistingUser ? "9876" : "5432", // Use different last four for existing users
             status: "active",
           })
         } else {
@@ -144,8 +145,16 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     try {
       if (user.provider === "circle") {
-        const res = await axios.get(`/api/circle/balance?address=${user.address}`)
-        return res.data.balance.toFixed(2)
+        // Find walletId from stored user data
+        const storedData = localStorage.getItem('circle_user_data');
+        const userData = storedData ? JSON.parse(storedData) : null;
+        
+        if (userData?.walletId) {
+          const balanceData = await fetchCircleWalletBalance(userData.walletId);
+          return parseFloat(balanceData.amount || 0).toFixed(2);
+        }
+        
+        return "0";
       }
 
       if (user.provider === "metamask" && provider) {

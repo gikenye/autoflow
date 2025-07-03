@@ -43,6 +43,7 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@react-oauth/google": "^0.12.2",
     "@solana/web3.js": "latest",
     "@web3auth/base": "latest",
     "@web3auth/ethereum-provider": "latest",

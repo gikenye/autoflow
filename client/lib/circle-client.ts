@@ -24,6 +24,7 @@ export interface OnboardingData {
   custodyType: string;
   walletCreatedAt: string;
   supportedCurrency: string;
+  isExistingUser?: boolean;
 }
 
 export interface UserData {
@@ -254,6 +255,19 @@ export function clearStoredUserData(): void {
   } catch (error) {
     console.warn('Failed to clear user data from localStorage:', error);
   }
+}
+
+export async function fetchCircleWalletBalance(walletId: string): Promise<any> {
+  const response = await apiRequest<any>(`/api/circle/fetchCircleWalletBalance`, {
+    method: 'POST',
+    body: JSON.stringify({ walletId }),
+  });
+
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch Circle wallet balance');
+  }
+
+  return response.data;
 }
 
 /**

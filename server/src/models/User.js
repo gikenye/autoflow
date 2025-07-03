@@ -59,7 +59,8 @@ const UserSchema = new mongoose.Schema({
   },
   circleUserId: {
     type: String,
-    sparse: true // Allows null values while maintaining uniqueness for non-null values
+    sparse: true, // Allows null values while maintaining uniqueness for non-null values
+    index: true // Add index here instead of separate declaration below
   },
   wallets: [WalletSchema], // Array of wallets
   autoTopup: {
@@ -110,8 +111,7 @@ UserSchema.index({ email: 1 }, {
 
 // Create index for wallet addresses
 UserSchema.index({ 'wallets.address': 1 }, { sparse: true });
-// Create index for circleUserId
-UserSchema.index({ 'circleUserId': 1 }, { sparse: true });
+// Removed duplicate circleUserId index
 
 // Methods
 UserSchema.methods.addWallet = function(walletData) {

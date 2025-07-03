@@ -216,8 +216,26 @@ class CircleAPI {
   async getWalletBalance(walletId) {
     try {
       console.log(`Getting balance for wallet: ${walletId}`);
-      const response = await this.client.getBalance({ walletId });
-      return response;
+      
+      // Use direct API call instead of SDK method
+      const url = `${this.baseUrl}/v1/w3s/wallets/${walletId}/balances`;
+      console.log(`Making request to: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Failed to fetch wallet balance: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+      }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Error getting wallet balance:", error.message);
       throw error;

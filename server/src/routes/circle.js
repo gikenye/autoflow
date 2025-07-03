@@ -275,10 +275,35 @@ router.post('/onboard',
       // Check if user already exists
       const existingUser = await userService.findByEmail(email);
       if (existingUser) {
-        console.warn('User already exists for email:', email);
-        return res.status(409).json({
-          error: 'User already exists',
-          details: 'A user with this email already exists'
+        console.log('User already exists for email, returning existing user data:', email);
+        
+        // Find the most recent Circle wallet for this user
+        const circleWallet = existingUser.wallets.find(w => w.provider === 'CIRCLE');
+        
+        if (!circleWallet) {
+          return res.status(404).json({
+            error: 'User exists but has no Circle wallet',
+            details: 'User found but no Circle wallet is associated with this account'
+          });
+        }
+        
+        // Return existing user data with wallet info for auto-login
+        return res.status(200).json({
+          success: true,
+          message: 'Existing user found',
+          data: {
+            email: existingUser.email,
+            dbId: existingUser._id,
+            walletSetId: circleWallet.walletSetId,
+            walletId: circleWallet.walletId,
+            walletAddress: circleWallet.address,
+            blockchain: circleWallet.blockchain,
+            walletState: circleWallet.state,
+            accountType: circleWallet.accountType || 'EOA',
+            custodyType: circleWallet.custodyType || 'DEVELOPER',
+            walletCreatedAt: circleWallet.createdAt,
+            isExistingUser: true
+          }
         });
       }
       
@@ -333,6 +358,97 @@ router.post('/onboard',
     }
   }
 );
+
+/**
+ * POST /api/circle/fetchCircleWalletBalance
+ * Fetch balance for a Circle wallet
+ */
+router.post('/fetchCircleWalletBalance', async (req, res) => {
+  try {
+    const { walletId } = req.body;
+    
+    if (!walletId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Wallet ID is required'
+      });
+    }
+
+    // Fetch balance from Circle API
+    const balanceResponse = await circleAPI.getWalletBalance(walletId);
+    
+    res.json({
+      success: true,
+      data: balanceResponse
+    });
+  } catch (error) {
+    console.error('Error fetching Circle wallet balance:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch Circle wallet balance',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/circle/fetchCircleWalletBalance
+ * Fetch balance for a wallet by address
+ */
+router.get('/fetchCircleWalletBalance', async (req, res) => {
+  try {
+    const { address } = req.query;
+    
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        error: 'Wallet address is required'
+      });
+    }
+
+    // Find user with this wallet address
+    const user = await User.findByWalletAddress(address);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found'
+      });
+    }
+
+    // Find the specific wallet in user's wallets array
+    const wallet = user.wallets.find(w => w.address.toLowerCase() === address.toLowerCase());
+    
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found in user account'
+      });
+    }
+
+    // Fetch balance from Circle API
+    const balanceResponse = await circleAPI.getWalletBalance(wallet.walletId);
+    
+    // Add the address to the response
+    const responseWithAddress = {
+      ...balanceResponse,
+      address,
+      walletId: wallet.walletId
+    };
+    
+    res.json({
+      success: true,
+      data: responseWithAddress
+    });
+  } catch (error) {
+    console.error('Error fetching wallet balance by address:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch wallet balance',
+      details: error.message
+    });
+  }
+});
 
 /**
  * GET /api/circle/users/:userId
@@ -705,6 +821,64 @@ router.get('/users', async (req, res) => {
         code: error.code,
         name: error.name
       }
+    });
+  }
+});
+
+/**
+ * @route   GET /api/circle/balance
+ * @desc    Get balance for a wallet address
+ * @access  Public
+ */
+router.get('/balance', async (req, res) => {
+  try {
+    const { address } = req.query;
+
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        error: 'Wallet address is required'
+      });
+    }
+
+    // Find user with this wallet address
+    const user = await User.findByWalletAddress(address);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found'
+      });
+    }
+
+    // Find the specific wallet in user's wallets array
+    const wallet = user.wallets.find(w => w.address.toLowerCase() === address.toLowerCase());
+    
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found in user account'
+      });
+    }
+
+    // Fetch balance from Circle API
+    const balanceResponse = await circleAPI.getWalletBalance(wallet.walletId);
+    
+    res.json({
+      success: true,
+      data: {
+        address,
+        balance: parseFloat(balanceResponse.amount || 0),
+        currency: balanceResponse.currency || 'USD',
+        walletId: wallet.walletId
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching wallet balance:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch wallet balance',
+      details: error.message
     });
   }
 });
