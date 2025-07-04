@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useWallet } from "@/hooks/useWallets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,27 +22,29 @@ interface DepositFormProps {
 export function DepositForm({ 
   onDeposit, 
   isLoading = false, 
-  minDeposit = 10, 
-  maxDeposit = 100000 
+  minDeposit = 50, 
+  maxDeposit = 900 
 }: DepositFormProps) {
+  const { addTransaction } = useWallet()
   const [amount, setAmount] = useState<string>("")
   const [selectedToken, setSelectedToken] = useState("usdc")
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [success, setSuccess] = useState(false)
 
   const tokens = [
     { 
       value: "usdc", 
       label: "USDC", 
       apy: 5.2, 
-      description: "USD Coin - Stable, reliable yield",
+      description: "USD Coin - Stable, reliable returns",
       icon: "💵"
     },
     { 
       value: "dai", 
       label: "DAI", 
       apy: 5.0, 
-      description: "Decentralized stablecoin",
+      description: "Decentralized stable dollar",
       icon: "🏛️"
     },
     { 
@@ -74,6 +77,7 @@ export function DepositForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSuccess(false)
 
     if (!amount || isNaN(depositAmount)) {
       setError("Please enter a valid amount")
@@ -95,14 +99,24 @@ export function DepositForm({
     try {
       if (onDeposit) {
         await onDeposit(depositAmount, selectedToken)
-        setAmount("")
-        setError(null)
       } else {
         // Mock deposit process
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        setAmount("")
-        setError(null)
+        await new Promise(resolve => setTimeout(resolve, 1200))
       }
+
+      // Add transaction to history
+      addTransaction({
+        type: "deposit",
+        amount: depositAmount,
+        description: `Deposited ${selectedTokenData.label} to savings`
+      })
+
+      setAmount("")
+      setError(null)
+      setSuccess(true)
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => setSuccess(false), 5000)
     } catch (error: any) {
       setError(error.message || "Deposit failed. Please try again.")
     } finally {
@@ -110,17 +124,18 @@ export function DepositForm({
     }
   }
 
-  const quickAmounts = [100, 500, 1000, 5000]
+  // More realistic quick amounts
+  const quickAmounts = [50, 100, 250, 500]
 
   return (
     <Card className="border-green-200">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Plus className="w-5 h-5 text-green-600" />
-          <span>Deposit Assets</span>
+          <span>Grow Savings</span>
         </CardTitle>
         <CardDescription>
-          Add crypto to start earning yield automatically
+          Add funds to start earning automatically
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -195,6 +210,20 @@ export function DepositForm({
             </div>
           </div>
 
+          {/* Success Message */}
+          {success && (
+            <Alert className="bg-green-50 border-green-200">
+              <div className="flex items-center">
+                <div className="w-4 h-4 mr-2 rounded-full bg-green-500 text-white flex items-center justify-center">
+                  ✓
+                </div>
+                <AlertDescription className="text-green-700">
+                  Deposit successful! Your funds are now earning yield.
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+
           {/* Yield Projections */}
           {depositAmount > 0 && (
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -207,32 +236,32 @@ export function DepositForm({
                       <Info className="w-4 h-4 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Estimates based on current APY. Actual returns may vary.</p>
+                      <p>Estimates based on current rates. Actual returns may vary.</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Daily yield:</span>
+                  <span className="text-gray-600">Daily:</span>
                   <span className="font-medium text-green-600">
                     ${projections.daily.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Weekly yield:</span>
+                  <span className="text-gray-600">Weekly:</span>
                   <span className="font-medium text-green-600">
                     ${projections.weekly.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Monthly yield:</span>
+                  <span className="text-gray-600">Monthly:</span>
                   <span className="font-medium text-green-600">
                     ${projections.monthly.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Annual yield:</span>
+                  <span className="text-gray-600">Annual:</span>
                   <span className="font-medium text-green-600">
                     ${projections.annual.toFixed(2)}
                   </span>
@@ -240,7 +269,7 @@ export function DepositForm({
               </div>
               <div className="mt-3 p-3 bg-white rounded border border-green-200">
                 <p className="text-xs text-gray-600">
-                  💡 Deposits are routed to yield strategies like Aave for maximum returns
+                  💡 Your funds earn while staying accessible for spending
                 </p>
               </div>
             </div>
@@ -252,36 +281,21 @@ export function DepositForm({
             </Alert>
           )}
 
-          {/* Deposit Button */}
-          <Button
-            type="submit"
-            disabled={isProcessing || !amount || isNaN(depositAmount) || depositAmount < minDeposit}
-            className="w-full bg-green-600 hover:bg-green-700"
-            size="lg"
+          {/* Submit Button */}
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isProcessing || depositAmount <= 0}
           >
             {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing Deposit...
+                Processing...
               </>
             ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Deposit ${depositAmount.toFixed(2)} {selectedTokenData.label}
-              </>
+              'Deposit and Start Earning'
             )}
           </Button>
-
-          {/* Additional Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">How it works:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>✓ Your funds are deposited into secure DeFi protocols</li>
-              <li>✓ Earn yield automatically while maintaining liquidity</li>
-              <li>✓ Use earned yield for spending or access safe credit lines</li>
-              <li>✓ Withdraw anytime with no lock-up periods</li>
-            </ul>
-          </div>
         </form>
       </CardContent>
     </Card>

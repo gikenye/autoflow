@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Wallet, LinkIcon, AlertTriangle, ExternalLink, Check } from "lucide-react"
+import { Loader2, Wallet, LinkIcon, AlertTriangle, ExternalLink, Check, CreditCard } from "lucide-react"
 import axios from "axios"
 
 export function MetaMaskCardConnector() {
@@ -17,15 +17,24 @@ export function MetaMaskCardConnector() {
   const [isLinking, setIsLinking] = useState(false)
   const [linkSuccess, setLinkSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [metamaskCardWallet, setMetamaskCardWallet] = useState<string | null>(null)
+  const [isCreatingCard, setIsCreatingCard] = useState(false)
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = typeof window !== "undefined" && window.ethereum !== undefined
 
-  // Check if we have a stored MetaMask address
+  // Check if we have a stored MetaMask address or card wallet
   useEffect(() => {
     const storedAddress = localStorage.getItem("metamask_address")
+    const storedCardWallet = localStorage.getItem("metamask_card_wallet")
+    
     if (storedAddress) {
       setMetaMaskAddress(storedAddress)
+    }
+    
+    if (storedCardWallet) {
+      setMetamaskCardWallet(storedCardWallet)
+      setLinkSuccess(true)
     }
   }, [])
 
@@ -42,32 +51,29 @@ export function MetaMaskCardConnector() {
     }
   }
 
-  // Link MetaMask as spending wallet
-  const handleLinkWallet = async () => {
-    if (!circleUser || !metaMaskAddress) return
+  // Create MetaMask Card wallet (second Circle wallet)
+  const handleCreateMetaMaskCard = async () => {
+    if (!circleUser) return
 
-    setIsLinking(true)
+    setIsCreatingCard(true)
     setError(null)
 
     try {
-      // This would be a real API call in production
-      // await axios.post("/api/link-spending-wallet", {
-      //   circleUserId: circleUser.address,
-      //   metaMaskAddress
-      // })
+      const response = await axios.post("/api/create-metamask-card-wallet")
       
-      // Mock API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      setLinkSuccess(true)
-      
-      // Store the linked status
-      localStorage.setItem("metamask_linked", "true")
+      if (response.data.success) {
+        const { address } = response.data.data
+        setMetamaskCardWallet(address)
+        localStorage.setItem("metamask_card_wallet", address)
+        setLinkSuccess(true)
+      } else {
+        throw new Error(response.data.error || "Failed to create MetaMask Card wallet")
+      }
     } catch (err: any) {
-      console.error("Failed to link wallet:", err)
-      setError(err.message || "Failed to link wallet")
+      console.error("Failed to create MetaMask Card wallet:", err)
+      setError(err.message || "Failed to create MetaMask Card wallet")
     } finally {
-      setIsLinking(false)
+      setIsCreatingCard(false)
     }
   }
 
@@ -77,10 +83,10 @@ export function MetaMaskCardConnector() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Wallet className="w-5 h-5" />
-            <span>Connect MetaMask Card</span>
+            <CreditCard className="w-5 h-5" />
+            <span>Get MetaMask Card</span>
           </CardTitle>
-          <CardDescription>Link your MetaMask wallet as a spending wallet</CardDescription>
+          <CardDescription>Create a MetaMask Card wallet powered by Circle</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
@@ -92,59 +98,25 @@ export function MetaMaskCardConnector() {
     )
   }
 
-  // If MetaMask is not installed
-  if (!isMetaMaskInstalled) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Wallet className="w-5 h-5" />
-            <span>MetaMask Not Detected</span>
-          </CardTitle>
-          <CardDescription>Install MetaMask to enable card spending</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              MetaMask extension is not installed. You need MetaMask to link a spending wallet.
-            </AlertDescription>
-          </Alert>
-          <Button asChild>
-            <a 
-              href="https://metamask.io/download.html" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Install MetaMask
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // If already linked successfully
-  if (linkSuccess || (cardInfo?.isLinked && metaMaskAddress)) {
+  // If MetaMask Card wallet is already created
+  if (linkSuccess || metamaskCardWallet) {
     return (
       <Card className="border-green-200">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Wallet className="w-5 h-5 text-green-600" />
-            <span>MetaMask Connected</span>
+            <CreditCard className="w-5 h-5 text-green-600" />
+            <span>MetaMask Card Created</span>
           </CardTitle>
-          <CardDescription>Your MetaMask wallet is linked as a spending wallet</CardDescription>
+          <CardDescription>Your MetaMask Card wallet has been created successfully</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Badge className="bg-green-100 text-green-800">
-                <Check className="w-3 h-3 mr-1" /> Linked
+                <Check className="w-3 h-3 mr-1" /> Active
               </Badge>
               <span className="text-sm font-mono">
-                {metaMaskAddress ? `${metaMaskAddress.slice(0, 6)}...${metaMaskAddress.slice(-4)}` : ''}
+                {metamaskCardWallet ? `${metamaskCardWallet.slice(0, 6)}...${metamaskCardWallet.slice(-4)}` : ''}
               </span>
             </div>
           </div>
@@ -157,58 +129,29 @@ export function MetaMaskCardConnector() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Wallet className="w-5 h-5" />
-          <span>Connect MetaMask Card</span>
+          <CreditCard className="w-5 h-5" />
+          <span>Get MetaMask Card</span>
         </CardTitle>
-        <CardDescription>Link your MetaMask wallet as a spending wallet</CardDescription>
+        <CardDescription>Create a MetaMask Card wallet powered by Circle</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!metaMaskAddress ? (
-          <Button 
-            onClick={handleConnectMetaMask} 
-            disabled={isMetaMaskLoading}
-            className="w-full"
-          >
-            {isMetaMaskLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <Wallet className="w-4 h-4 mr-2" />
-                Connect MetaMask
-              </>
-            )}
-          </Button>
-        ) : (
-          <div className="space-y-4">
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-sm font-medium">MetaMask Address</p>
-              <p className="font-mono text-xs">
-                {metaMaskAddress}
-              </p>
-            </div>
-            
-            <Button 
-              onClick={handleLinkWallet} 
-              disabled={isLinking}
-              className="w-full"
-            >
-              {isLinking ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Linking Wallets...
-                </>
-              ) : (
-                <>
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Set as Spending Wallet
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+        <Button 
+          onClick={handleCreateMetaMaskCard} 
+          disabled={isCreatingCard}
+          className="w-full"
+        >
+          {isCreatingCard ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Creating Card Wallet...
+            </>
+          ) : (
+            <>
+              <CreditCard className="w-4 h-4 mr-2" />
+              Get MetaMask Card
+            </>
+          )}
+        </Button>
 
         {error && (
           <Alert variant="destructive">

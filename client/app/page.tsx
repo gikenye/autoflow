@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { TrendingUp, CreditCard, History, Settings, Plus, Zap } from "lucide-react"
+import { useState, useEffect } from "react"
+import { TrendingUp, CreditCard, History, Settings, Plus, Zap, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -19,12 +19,15 @@ import { WalletProvider, useWallet } from "@/hooks/useWallets"
 import { AuthModal } from "@/components/auth/AuthModal"
 import { WalletInfo } from "@/components/wallet/WalletInfo"
 import { CardSpendSimulator } from "@/components/CardSpendSimulator"
+import { TransactionLog } from "@/components/TransactionLog"
+import { WalletToCardTransfer } from "@/components/WalletToCardTransfer"
+import { AaveYieldSpender } from "@/components/AaveYieldSpender"
 
 // Mock data
 const mockData = {
-  balance: 2847.32,
+  balance: 847.32,
   yieldEarned: 1.38,
-  creditAvailable: 1423.66,
+  creditAvailable: 423.66,
   healthFactor: 85,
   weeklyYield: 12.45,
   transactions: [
@@ -36,12 +39,33 @@ const mockData = {
 }
 
 function AutoFlowAppContent() {
-  const { user, isConnected, cardInfo } = useWallet()
+  const { user, isConnected, cardInfo, getBalance } = useWallet()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [spendingMode, setSpendingMode] = useState("yield-only")
   const [creditLimit, setCreditLimit] = useState([50])
   const [autoRepay, setAutoRepay] = useState(true)
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [walletBalance, setWalletBalance] = useState("0")
+  const [depositAmount, setDepositAmountState] = useState("0")
+  
+  // Update wallet balance when user changes or tab changes
+  useEffect(() => {
+    const updateBalance = async () => {
+      if (user) {
+        const balance = await getBalance()
+        setWalletBalance(balance)
+      }
+    }
+    
+    updateBalance()
+  }, [user, activeTab, getBalance])
+
+  function setDepositAmount(amount: number): void {
+    const depositField = document.getElementById("amount") as HTMLInputElement;
+    if (depositField) {
+      depositField.value = amount.toString();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -210,7 +234,7 @@ function AutoFlowAppContent() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Desktop Navigation */}
             <div className="hidden md:block mb-8">
-              <TabsList className="grid w-full grid-cols-4 max-w-md mx-auto">
+              <TabsList className="grid w-full grid-cols-5 max-w-md mx-auto">
                 <TabsTrigger value="dashboard" className="flex items-center space-x-2">
                   <TrendingUp className="w-4 h-4" />
                   <span>Dashboard</span>
@@ -226,6 +250,10 @@ function AutoFlowAppContent() {
                 <TabsTrigger value="history" className="flex items-center space-x-2">
                   <History className="w-4 h-4" />
                   <span>History</span>
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="flex items-center space-x-2">
+                  <User className="w-4 h-4" />
+                  <span>Profile</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -518,11 +546,13 @@ function AutoFlowAppContent() {
                   <div className="space-y-2">
                     <Label>Quick amounts</Label>
                     <div className="grid grid-cols-4 gap-2">
-                      {[100, 500, 1000, 5000].map((amount) => (
+                      {[50, 100, 250, 500].map((amount) => (
                         <Button
                           key={amount}
+                          type="button"
                           variant="outline"
                           size="sm"
+                          onClick={() => setDepositAmount(amount)}
                           className="text-sm"
                         >
                           ${amount}
@@ -640,45 +670,26 @@ function AutoFlowAppContent() {
 
             {/* History */}
             <TabsContent value="history" className="space-y-6">
-              <Card className="border-green-200">
-                <CardHeader>
-                  <CardTitle>Transaction History</CardTitle>
-                  <CardDescription>Your recent activity</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mockData.transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              tx.type === "deposit"
-                                ? "bg-green-100"
-                                : tx.type === "yield"
-                                  ? "bg-blue-100"
-                                  : tx.type === "spend"
-                                    ? "bg-red-100"
-                                    : "bg-yellow-100"
-                            }`}
-                          >
-                            {tx.type === "deposit" && <Plus className="w-4 h-4 text-green-600" />}
-                            {tx.type === "yield" && <TrendingUp className="w-4 h-4 text-blue-600" />}
-                            {tx.type === "spend" && <CreditCard className="w-4 h-4 text-red-600" />}
-                            {tx.type === "repay" && <Zap className="w-4 h-4 text-yellow-600" />}
-                          </div>
-                          <div>
-                            <p className="font-medium">{tx.action}</p>
-                            <p className="text-sm text-gray-600">{tx.date}</p>
-                          </div>
-                        </div>
-                        <div className={`font-medium ${tx.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                          {tx.amount > 0 ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
-                        </div>
+              {/* Import and use our dynamic TransactionLog component */}
+              <div className="space-y-6">
+                {/* Replace static transaction history with our dynamic component */}
+                {isConnected && <TransactionLog />}
+                
+                {/* Show placeholder if not connected */}
+                {!isConnected && (
+                  <Card className="border-green-200">
+                    <CardHeader>
+                      <CardTitle>Transaction History</CardTitle>
+                      <CardDescription>Your recent activity</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-6">
+                        <p className="text-sm text-gray-600">Connect your wallet to see transaction history</p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
               {/* Analytics Chart Placeholder */}
               <Card className="border-green-200">
@@ -696,6 +707,90 @@ function AutoFlowAppContent() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Profile */}
+            <TabsContent value="profile" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* User Profile Card */}
+                <Card className="border-green-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <User className="w-5 h-5 text-green-600" />
+                      <span>User Profile</span>
+                    </CardTitle>
+                    <CardDescription>Your account information</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {user && (
+                      <>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                            {user.profileImage ? (
+                              <img 
+                                src={user.profileImage} 
+                                alt="Profile" 
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-8 h-8 text-green-600" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-lg">
+                              {user.name || user.email?.split('@')[0] || 'User'}
+                            </h3>
+                            {user.email && (
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                            )}
+                            <Badge className="mt-1">
+                              {user.provider === "metamask" ? "MetaMask" : "Circle"} Wallet
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium mb-2">Wallet Address</h4>
+                          <div className="flex items-center space-x-2">
+                            <code className="text-xs bg-gray-100 p-2 rounded flex-1 overflow-hidden overflow-ellipsis">
+                              {user.address}
+                            </code>
+                            <Button variant="outline" size="sm" className="shrink-0">
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                            <p className="text-sm text-green-700 mb-1">Wallet Balance</p>
+                            <p className="text-lg font-semibold text-green-700">
+                              ${walletBalance}
+                            </p>
+                          </div>
+                          
+                          {cardInfo?.isLinked && (
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                              <p className="text-sm text-blue-700 mb-1">Card Balance</p>
+                              <p className="text-lg font-semibold text-blue-700">
+                                ${cardInfo.balance?.toFixed(2) || "0.00"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Transfer to Card Component */}
+                <WalletToCardTransfer />
+              </div>
+              
+              {/* Yield Spending Section */}
+              <div className="grid grid-cols-1 gap-6">
+                <AaveYieldSpender />
+              </div>
+            </TabsContent>
           </Tabs>
         )}
       </main>
@@ -703,12 +798,13 @@ function AutoFlowAppContent() {
       {/* Mobile Bottom Navigation */}
       {isConnected && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 shadow-lg">
-          <div className="grid grid-cols-4 px-2 py-2">
+          <div className="grid grid-cols-5 px-2 py-2">
             {[
               { id: "dashboard", icon: TrendingUp, label: "Dashboard" },
               { id: "deposit", icon: Plus, label: "Deposit" },
               { id: "settings", icon: Settings, label: "Settings" },
               { id: "history", icon: History, label: "History" },
+              { id: "profile", icon: User, label: "Profile" },
             ].map((tab) => (
               <button
                 key={tab.id}

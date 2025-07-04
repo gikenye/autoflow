@@ -2,74 +2,101 @@
 
 import { useState } from "react"
 import { useWallet } from "@/hooks/useWallets"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { CreditCard, Loader2, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
-
-let confetti: any
-if (typeof window !== "undefined") {
-  confetti = require("canvas-confetti")
-}
+import { Loader2, AlertTriangle, Check, CreditCard, Coffee, ShoppingBag, Utensils } from "lucide-react"
 
 export function CardSpendSimulator() {
   const { user, cardInfo, simulateSpend } = useWallet()
   const [amount, setAmount] = useState<string>("")
   const [isProcessing, setIsProcessing] = useState(false)
-  const [lastTransaction, setLastTransaction] = useState<{
-    amount: number
-    success: boolean
-    timestamp: Date
-  } | null>(null)
+  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [spentItem, setSpentItem] = useState<string>("coffee")
 
-  const handleSpend = async () => {
-    const spendAmount = parseFloat(amount)
+  const metamaskCardWallet = localStorage.getItem("metamask_card_wallet")
+  const isCardAvailable = cardInfo?.isLinked || !!metamaskCardWallet
+  
+  // Ensure we always display a non-negative balance
+  const cardBalance = cardInfo?.balance !== undefined ? 
+    Math.max(0, cardInfo.balance) : 25.00
+
+  const spendItems = [
+    { id: "coffee", icon: <Coffee className="w-4 h-4" />, label: "Coffee", amount: "3.50" },
+    { id: "food", icon: <Utensils className="w-4 h-4" />, label: "Lunch", amount: "12.00" },
+    { id: "shopping", icon: <ShoppingBag className="w-4 h-4" />, label: "Shopping", amount: "25.00" },
+  ]
+
+  const handleQuickSpend = async (item: { id: string, amount: string }) => {
+    if (!user || !isCardAvailable) return
+    
+    const spendAmount = parseFloat(item.amount)
     if (isNaN(spendAmount) || spendAmount <= 0) {
-      setError("Please enter a valid amount")
-      setIsProcessing(false)
+      setError("Invalid amount")
       return
     }
-
-    if (!cardInfo?.balance || spendAmount > cardInfo.balance) {
-      setError("Insufficient balance")
-      setIsProcessing(false)
-      return
-    }
-
-    if (!cardInfo?.isLinked) {
+    
+    // Check if we have enough balance
+    if (cardBalance < spendAmount) {
+      setError("Insufficient funds")
       return
     }
 
     setIsProcessing(true)
+    setError(null)
+    setSuccess(false)
+    setSpentItem(item.id)
+    setAmount(item.amount)
 
     try {
-      const success = await simulateSpend(spendAmount)
-
-      setLastTransaction({
-        amount: spendAmount,
-        success,
-        timestamp: new Date(),
-      })
-
-      if (success && confetti) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-        })
-        setAmount("")
+      const result = await simulateSpend(spendAmount)
+      if (result) {
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 5000)
+      } else {
+        setError("Purchase failed. Please try again.")
       }
-    } catch (error) {
-      console.error("Spend simulation failed:", error)
-      setLastTransaction({
-        amount: spendAmount,
-        success: false,
-        timestamp: new Date(),
-      })
+    } catch (err: any) {
+      console.error("Spend simulation failed:", err)
+      setError(err.message || "Purchase failed")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleSpend = async () => {
+    if (!user || !isCardAvailable) return
+    
+    const spendAmount = parseFloat(amount)
+    if (isNaN(spendAmount) || spendAmount <= 0) {
+      setError("Please enter a valid amount")
+      return
+    }
+    
+    // Check if we have enough balance
+    if (cardBalance < spendAmount) {
+      setError("Insufficient funds")
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+    setSuccess(false)
+    setSpentItem("custom")
+
+    try {
+      const result = await simulateSpend(spendAmount)
+      if (result) {
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 5000)
+      } else {
+        setError("Purchase failed. Please try again.")
+      }
+    } catch (err: any) {
+      console.error("Spend simulation failed:", err)
+      setError(err.message || "Purchase failed")
     } finally {
       setIsProcessing(false)
     }
@@ -77,43 +104,39 @@ export function CardSpendSimulator() {
 
   if (!user) {
     return (
-      <Card className="border-gray-200">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <CreditCard className="w-5 h-5" />
-            <span>Card Spending</span>
+            <span>Your Card</span>
           </CardTitle>
-          <CardDescription>Connect your wallet to simulate card spending</CardDescription>
+          <CardDescription>Shop and pay with your card earnings</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>Please connect your wallet to access card spending features.</AlertDescription>
+            <AlertDescription>Please connect your wallet first.</AlertDescription>
           </Alert>
         </CardContent>
       </Card>
     )
   }
 
-  if (!cardInfo?.isLinked) {
+  if (!isCardAvailable) {
     return (
-      <Card className="border-orange-200">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <CreditCard className="w-5 h-5" />
-            <span>MetaMask Card</span>
+            <span>Your Card</span>
           </CardTitle>
-          <CardDescription>Link your MetaMask Card to enable spending</CardDescription>
+          <CardDescription>Shop and pay with your card earnings</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              No MetaMask Card detected. Visit{" "}
-              <a href="https://metamask.io" target="_blank" rel="noopener noreferrer" className="underline">
-                MetaMask
-              </a>{" "}
-              to apply for a card and link it to your wallet.
+              You need to set up your card first. Go to the Setup tab.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -121,121 +144,105 @@ export function CardSpendSimulator() {
     )
   }
 
-  const spendAmount = parseFloat(amount) || 0
-  const isValidAmount = spendAmount > 0 && spendAmount <= (cardInfo.balance || 0)
+  const getSuccessMessage = () => {
+    switch(spentItem) {
+      case "coffee":
+        return "Success! You just bought ☕️ with $3.50 from your card earnings.";
+      case "food":
+        return "Yum! You just paid for lunch 🍱 with $12.00 from your card earnings.";
+      case "shopping":
+        return "Nice! You just made a purchase 🛍️ with $25.00 from your card earnings.";
+      default:
+        return `Purchase complete! You spent $${amount} from your card earnings.`;
+    }
+  }
 
   return (
-    <Card className="border-green-200">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <CreditCard className="w-5 h-5 text-green-600" />
-            <span>Card Spending</span>
-          </div>
-          <Badge className="bg-green-100 text-green-800">•••• {cardInfo.lastFour}</Badge>
+        <CardTitle className="flex items-center space-x-2">
+          <CreditCard className="w-5 h-5" />
+          <span>Your Card</span>
         </CardTitle>
-        <CardDescription>
-          Available balance: ${cardInfo.balance?.toFixed(2)} | Limit: ${cardInfo.limit?.toLocaleString()}
-        </CardDescription>
+        <CardDescription>Shop and pay with your card earnings</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Amount Input */}
         <div className="space-y-2">
-          <Label htmlFor="spend-amount">Spend Amount</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-            <Input
-              id="spend-amount"
-              type="number"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="pl-8"
-              min="0"
-              max={cardInfo.balance}
-              step="0.01"
-            />
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Available Balance</span>
+            <span className="font-medium">${cardBalance.toFixed(2)}</span>
           </div>
-          {spendAmount > 0 && !isValidAmount && (
-            <p className="text-sm text-red-600">Amount exceeds available balance (${cardInfo.balance?.toFixed(2)})</p>
-          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Card Number</span>
+            <span className="font-mono text-sm">•••• •••• •••• {cardInfo?.lastFour || "1234"}</span>
+          </div>
         </div>
 
-        {/* Quick Amount Buttons */}
-        <div className="flex space-x-2">
-          {[10, 25, 50, 100].map((quickAmount) => (
-            <Button
-              key={quickAmount}
-              variant="outline"
-              size="sm"
-              onClick={() => setAmount(quickAmount.toString())}
-              disabled={quickAmount > (cardInfo.balance || 0)}
-              className="flex-1"
-            >
-              ${quickAmount}
-            </Button>
-          ))}
-        </div>
-
-        {/* Spend Button */}
-        <Button
-          onClick={handleSpend}
-          disabled={!isValidAmount || isProcessing}
-          className="w-full bg-green-600 hover:bg-green-700"
-          size="lg"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing Transaction...
-            </>
-          ) : (
-            <>
-              <CreditCard className="w-4 h-4 mr-2" />
-              Spend ${spendAmount.toFixed(2)}
-            </>
-          )}
-        </Button>
-
-        {/* Transaction Result */}
-        {lastTransaction && (
-          <Alert className={lastTransaction.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-            <div className="flex items-center space-x-2">
-              {lastTransaction.success ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <XCircle className="h-4 w-4 text-red-600" />
-              )}
-              <AlertDescription>
-                {lastTransaction.success ? (
-                  <>
-                    <strong>Transaction Successful!</strong> Spent ${lastTransaction.amount.toFixed(2)} via MetaMask
-                    Card
-                  </>
-                ) : (
-                  <>
-                    <strong>Transaction Failed.</strong> Unable to process ${lastTransaction.amount.toFixed(2)} payment
-                  </>
-                )}
-              </AlertDescription>
+        <div className="pt-4 border-t">
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium">Quick Purchase</h4>
+            <div className="grid grid-cols-3 gap-2">
+              {spendItems.map((item) => (
+                <Button 
+                  key={item.id}
+                  variant="outline"
+                  className="flex flex-col items-center justify-center h-20 p-2"
+                  onClick={() => handleQuickSpend(item)}
+                  disabled={isProcessing || cardBalance < parseFloat(item.amount)}
+                >
+                  <div className="mb-1">{item.icon}</div>
+                  <span className="text-xs">{item.label}</span>
+                  <span className="text-sm font-medium">${item.amount}</span>
+                </Button>
+              ))}
             </div>
-            <p className="text-xs text-gray-500 mt-1">{lastTransaction.timestamp.toLocaleTimeString()}</p>
+            
+            <h4 className="text-sm font-medium mt-4">Custom Amount</h4>
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="0.01"
+                  max={cardBalance}
+                  step="0.01"
+                  placeholder="0.00"
+                  className="pl-7"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={handleSpend} 
+                disabled={isProcessing || !amount || parseFloat(amount) > cardBalance}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : "Pay Now"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {success && (
+          <Alert className="bg-green-50 text-green-800 border-green-200">
+            <Check className="h-4 w-4" />
+            <AlertDescription>
+              {getSuccessMessage()}
+            </AlertDescription>
           </Alert>
         )}
 
-        {/* Card Status */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Card Status:</span>
-            <Badge variant="outline" className="bg-green-100 text-green-800">
-              {cardInfo.status?.toUpperCase()}
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between text-sm mt-1">
-            <span className="text-gray-600">Available Credit:</span>
-            <span className="font-medium">${((cardInfo.limit || 0) - (cardInfo.balance || 0)).toLocaleString()}</span>
-          </div>
-        </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   )

@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Wallet, CreditCard, ExternalLink, LogOut, Copy, Check } from "lucide-react"
+import { Wallet, CreditCard, LogOut, Copy, Check } from "lucide-react"
 
 export function WalletInfo() {
   const { user, cardInfo, disconnect, getBalance } = useWallet()
@@ -41,48 +41,37 @@ export function WalletInfo() {
   if (!user) return null
 
   return (
-    <div className="flex items-center space-x-3">
-      {/* Wallet Balance */}
-      <Card className="border-green-200">
-        <CardContent className="p-3">
-          <div className="flex items-center space-x-2">
-            <Wallet className="w-4 h-4 text-green-600" />
-            <div>
-              <p className="text-sm font-medium">{balance} ETH</p>
-              <p className="text-xs text-gray-500">Wallet Balance</p>
-            </div>
+    <div className="flex items-center space-x-1 sm:space-x-2">
+      {/* Compact Balance Indicators (both mobile and desktop) */}
+      <div className="flex items-center">
+        {/* Wallet Balance - Minimal Style */}
+        <div className="flex items-center text-xs bg-green-50 border border-green-100 rounded-full px-1.5 py-0.5 mr-1">
+          <Wallet className="w-2.5 h-2.5 text-green-600 mr-0.5" />
+          <span className="font-medium">${balance}</span>
+        </div>
+        
+        {/* Card Balance - Minimal Style */}
+        {cardInfo?.isLinked && (
+          <div className="flex items-center text-xs bg-blue-50 border border-blue-100 rounded-full px-1.5 py-0.5">
+            <CreditCard className="w-2.5 h-2.5 text-blue-600 mr-0.5" />
+            <span className="font-medium">${cardInfo.balance?.toFixed(2) || "0"}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Card Info */}
-      {cardInfo?.isLinked && (
-        <Card className="border-blue-200">
-          <CardContent className="p-3">
-            <div className="flex items-center space-x-2">
-              <CreditCard className="w-4 h-4 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">${cardInfo.balance?.toFixed(2)}</p>
-                <p className="text-xs text-gray-500">Card Balance</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        )}
+      </div>
 
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10">
+          <Button variant="ghost" className="relative h-7 w-7 sm:h-8 sm:w-8 rounded-full p-0">
+            <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
               <AvatarImage src={user.profileImage || "/placeholder.svg"} alt={user.name || user.address} />
-              <AvatarFallback>
+              <AvatarFallback className="text-xs">
                 {user.name ? user.name.charAt(0).toUpperCase() : user.address.slice(2, 4).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80" align="end" forceMount>
+        <DropdownMenuContent className="w-64 sm:w-80" align="end" forceMount>
           <div className="flex items-center justify-start gap-2 p-2">
             <div className="flex flex-col space-y-1 leading-none">
               {user.name && <p className="font-medium">{user.name}</p>}
@@ -94,34 +83,44 @@ export function WalletInfo() {
                 </Button>
               </div>
               <Badge variant="outline" className="w-fit">
-                {user.provider === "metamask" ? "MetaMask" : "Circle"}
+                {user.provider === "metamask" ? "Connected" : "Circle"}
               </Badge>
             </div>
           </div>
           <DropdownMenuSeparator />
 
+          {/* Detailed Balances */}
+          <div className="p-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs">My Balance</span>
+              <span className="text-xs font-medium">${balance}</span>
+            </div>
+            {cardInfo?.isLinked && (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs">Card Balance</span>
+                <span className="text-xs font-medium">${cardInfo.balance?.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+          
+          <DropdownMenuSeparator />
+
           {/* Card Status */}
           <div className="p-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm">MetaMask Card</span>
-              {cardInfo?.isLinked ? (
-                <Badge className="bg-green-100 text-green-800">Active •••• {cardInfo.lastFour}</Badge>
+              <span className="text-sm">Spending Card</span>
+              {cardInfo?.isLinked || localStorage.getItem("metamask_card_wallet") ? (
+                <Badge className="bg-green-100 text-green-800">Active •••• {cardInfo?.lastFour || '1234'}</Badge>
               ) : (
-                <Badge variant="outline">Not Linked</Badge>
+                <Badge variant="outline">Not Setup</Badge>
               )}
             </div>
-            {!cardInfo?.isLinked && (
-              <p className="text-xs text-muted-foreground mt-1">Visit MetaMask to apply for a card</p>
+            {!cardInfo?.isLinked && !localStorage.getItem("metamask_card_wallet") && (
+              <p className="text-xs text-muted-foreground mt-1">Set up your card to spend your earnings</p>
             )}
           </div>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <a href="https://metamask.io" target="_blank" rel="noopener noreferrer" className="cursor-pointer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              <span>Visit MetaMask</span>
-            </a>
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={disconnect} className="text-red-600">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Disconnect</span>

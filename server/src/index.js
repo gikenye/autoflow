@@ -81,9 +81,10 @@ app.use('*', (req, res) => {
       'GET /api/circle/users',
       'GET /api/circle/users/:userId',
       'GET /api/circle/users/:userId/wallets',
-      'POST /api/link-wallet',
-      'POST /api/transfer-to-metamask',
-      'GET /api/user-wallets/:userId',
+      'POST /api/metamask/create-metamask-card-wallet',
+      'POST /api/metamask/link-wallet',
+      'POST /api/metamask/transfer-to-metamask',
+      'GET /api/metamask/user-wallets/:userId',
       'POST /api/schedule-auto-topup'
     ]
   });
