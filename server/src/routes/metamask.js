@@ -307,4 +307,124 @@ router.post('/schedule-auto-topup', validateAutoTopup, handleValidationErrors, a
   }
 });
 
+/**
+ * POST /api/metamask/create-metamask-card-wallet
+ * Create a second Circle wallet for a user to simulate MetaMask Card
+ */
+router.post('/create-metamask-card-wallet', async (req, res) => {
+  try {
+    // Get user from session or token
+    // In a real app, you would get the user ID from the authenticated session
+    // For this example, we'll use a user ID from the request body or query
+    const userId = req.body.userId || req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    // Find the user in the database
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if user already has a MetaMask Card wallet
+    const existingMetaMaskCard = user.wallets.find(wallet => wallet.provider === 'CIRCLE' && wallet.walletId.includes('metamask-card'));
+    
+    if (existingMetaMaskCard) {
+      return res.status(200).json({
+        success: true,
+        message: 'MetaMask Card wallet already exists',
+        data: {
+          walletId: existingMetaMaskCard.walletId,
+          address: existingMetaMaskCard.address
+        }
+      });
+    }
+
+    // Get the user's primary wallet set ID
+    const primaryWallet = user.wallets.find(wallet => wallet.provider === 'CIRCLE');
+    
+    if (!primaryWallet || !primaryWallet.walletSetId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User does not have a primary Circle wallet'
+      });
+    }
+
+    // Create a new wallet in the same wallet set
+    const walletSetId = primaryWallet.walletSetId;
+    const blockchain = primaryWallet.blockchain || 'ETH-SEPOLIA';
+    
+    console.log(`Creating MetaMask Card wallet for user ${userId} in wallet set ${walletSetId}`);
+    const walletsResponse = await circleAPI.createWallets(walletSetId, blockchain, 1);
+    
+    if (!walletsResponse.data?.wallets?.length) {
+      console.error('Failed to create MetaMask Card wallet:', { response: walletsResponse });
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create MetaMask Card wallet',
+        details: 'Could not create wallet or wallet not returned in response'
+      });
+    }
+    
+    const wallet = walletsResponse.data.wallets[0];
+    
+    // Prepare wallet data with special tag for MetaMask Card
+    const metamaskCardWallet = {
+      provider: 'CIRCLE',
+      walletId: `${wallet.id}-metamask-card`, // Tag the wallet ID to identify it as a MetaMask Card
+      walletSetId: wallet.walletSetId,
+      address: wallet.address,
+      blockchain: wallet.blockchain,
+      state: wallet.state,
+      custodyType: wallet.custodyType || 'DEVELOPER',
+      accountType: wallet.accountType || 'EOA',
+      createdAt: wallet.createDate || new Date()
+    };
+
+    // Add wallet to user
+    user.wallets.push(metamaskCardWallet);
+    await user.save();
+
+    // Return success response
+    res.status(201).json({
+      success: true,
+      message: 'MetaMask Card wallet created successfully',
+      data: {
+        walletId: metamaskCardWallet.walletId,
+        address: metamaskCardWallet.address,
+        blockchain: metamaskCardWallet.blockchain,
+        state: metamaskCardWallet.state
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating MetaMask Card wallet:', {
+      error: error.message,
+      stack: error.stack
+    });
+    
+    const { message, statusCode } = getCircleErrorDetails(error);
+    
+    res.status(statusCode).json({
+      success: false,
+      error: message,
+      details: {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        name: error.name
+      }
+    });
+  }
+});
+
 export default router; 

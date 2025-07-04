@@ -19,9 +19,9 @@ interface WalletOverviewProps {
 
 export function WalletOverview({
   walletAddress = "0x1234...5678",
-  balance = 2847.32,
+  balance = 847.32,
   yieldEarned = 1.38,
-  creditLimit = 1423.66,
+  creditLimit = 423.66,
   creditUsed = 0,
   healthFactor = 85,
   isLoading = false
