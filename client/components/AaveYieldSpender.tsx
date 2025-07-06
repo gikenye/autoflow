@@ -197,7 +197,7 @@ export function AaveYieldSpender() {
   }
 
   return (
-    <Card>
+    <Card className="border-green-200 AaveYieldSpender">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Zap className="w-5 h-5 text-green-600" />
