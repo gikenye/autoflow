@@ -1,96 +1,105 @@
 "use client"
 
 import { useState } from "react"
-import { WalletProvider } from "@/hooks/useWallets"
-import { MetaMaskCardConnector } from "@/components/MetaMaskCardConnector"
-import { MetaMaskCardSimulator } from "@/components/MetaMaskCardSimulator"
-import { TopUpCardSection } from "@/components/TopUpCardSection"
-import { CardSpendSimulator } from "@/components/CardSpendSimulator"
-import { AaveEarnings } from "@/components/AaveEarnings"
-import { CardTopUp } from "@/components/CardTopUp"
-import { WalletInfo } from "@/components/wallet/WalletInfo"
-import { TransactionLog } from "@/components/TransactionLog"
-import { AaveYieldSpender } from "@/components/AaveYieldSpender"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowDown, ArrowUp } from "lucide-react"
 
-export default function SpendingCardPage() {
-  const [activeTab, setActiveTab] = useState("connect")
+interface MetaMaskCardProps {
+  cardholderName?: string
+  balance?: string
+  walletAddress?: string
+  expirationDate?: string
+  lastFourDigits?: string
+  onSpendClick?: () => void
+  onDepositClick?: () => void
+}
+
+export default function MetaMaskCard({
+  cardholderName = "AutoFlow User",
+  balance = "1,234.56",
+  walletAddress = "0x1234...5678",
+  expirationDate = "12/26",
+  lastFourDigits = "4623",
+  onSpendClick,
+  onDepositClick,
+}: MetaMaskCardProps) {
+  const [transactions] = useState([
+    {
+      id: 1,
+      type: "deposit",
+      title: "Deposit",
+      time: "Today, 10:45 AM",
+      amount: "+ $500.00",
+      color: "green",
+    },
+    {
+      id: 2,
+      type: "spend",
+      title: "Yield Spend",
+      time: "Yesterday, 3:12 PM",
+      amount: "- $24.89",
+      color: "red",
+    },
+  ])
 
   return (
-    <WalletProvider>
-      <div className="container mx-auto py-2 sm:py-4 px-3 sm:px-4">
-        <div className="flex justify-between items-center mb-3 sm:mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Your Spending Card</h1>
-            <p className="text-xs sm:text-sm text-gray-500">Setup and use your card</p>
-          </div>
-          <WalletInfo />
+    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      {/* Card */}
+      <div className="relative w-full aspect-[1.586] max-w-md rounded-t-xl overflow-hidden">
+        {/* Card background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#013330] via-[#F76B1C] to-[#013330]">
+          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.3),rgba(0,0,0,0.2))]"></div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 mb-3 sm:mb-6 w-full">
-            <TabsTrigger value="connect" className="text-xs sm:text-sm">1. Setup</TabsTrigger>
-            <TabsTrigger value="topup" className="text-xs sm:text-sm">2. Add Money</TabsTrigger>
-            <TabsTrigger value="earnings" className="text-xs sm:text-sm">3. Move Earnings</TabsTrigger>
-            <TabsTrigger value="direct" className="text-xs sm:text-sm">4. Direct Spend</TabsTrigger>
-            <TabsTrigger value="spend" className="text-xs sm:text-sm">5. Use Card</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs sm:text-sm">Activity</TabsTrigger>
-          </TabsList>
+        {/* Card content */}
+        <div className="relative z-10 flex flex-col justify-between h-full p-4 text-white">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <img alt="MetaMask Fox" className="h-6 w-auto" src="/metamask-fox.svg" />
+              <span className="font-bold text-base tracking-tight">MetaMask</span>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wide bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+              Virtual
+            </span>
+          </div>
 
-          <TabsContent value="connect" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 gap-4 sm:gap-8">
-              <MetaMaskCardSimulator />
-              <div className="flex justify-end">
-                <Button onClick={() => setActiveTab("topup")}>Next: Add Money</Button>
+          <div className="flex flex-col gap-4 pt-2">
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-medium opacity-80">Current Balance</div>
+              <div className="text-xl font-bold">{balance} USDC</div>
+              <div className="text-xs opacity-70">Connected to {walletAddress}</div>
+            </div>
+
+            <div className="text-base font-mono tracking-[0.2em] opacity-90">•••• •••• •••• {lastFourDigits}</div>
+
+            <div className="flex items-end justify-between">
+              <div className="text-left">
+                <div className="text-xs uppercase opacity-70">Cardholder</div>
+                <div className="text-sm font-semibold">{cardholderName}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs uppercase opacity-70">Valid Thru</div>
+                <div className="text-sm font-semibold">{expirationDate}</div>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="topup" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 gap-4 sm:gap-8">
-              <CardTopUp />
-              <div className="flex justify-end">
-                <Button onClick={() => setActiveTab("earnings")}>Next: Move Earnings</Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="earnings" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-              <AaveEarnings />
-              <TopUpCardSection />
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={() => setActiveTab("direct")}>Next: Direct Spend</Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="direct" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 gap-4 sm:gap-8">
-              <AaveYieldSpender />
-              <div className="flex justify-end">
-                <Button onClick={() => setActiveTab("spend")}>Next: Use Card</Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="spend" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-              <CardSpendSimulator />
-              <div className="flex justify-end col-span-1 md:col-span-2">
-                <Button onClick={() => setActiveTab("history")}>View Activity</Button>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="history" className="space-y-4 sm:space-y-8">
-            <div className="grid grid-cols-1 gap-4 sm:gap-8">
-              <TransactionLog />
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
-    </WalletProvider>
+
+      {/* Actions */}
+      <div className="flex border-t border-gray-100">
+        <button
+          onClick={onSpendClick}
+          className="flex-1 flex items-center justify-center py-2.5 bg-gradient-to-r from-[#FF7A00] to-[#FF3C00] text-white font-medium text-sm hover:brightness-110 transition"
+        >
+          Spend Yield
+        </button>
+        <button
+          onClick={onDepositClick}
+          className="flex-1 flex items-center justify-center py-2.5 bg-[#2A2A2D] text-white font-medium text-sm hover:bg-[#3A3A3D] transition"
+        >
+          Add Funds
+        </button>
+      </div>
+    </div>
   )
-} 
+}

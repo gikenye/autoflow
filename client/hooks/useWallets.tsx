@@ -10,6 +10,7 @@ import React, {
 } from "react"
 import axios from "axios"
 import { fetchCircleWalletBalance } from "@/lib/circle-client"
+import { signIn, signOut, useSession } from "next-auth/react"
 
 export interface User {
   address: string
@@ -76,12 +77,76 @@ export const useWallet = () => {
 }
 
 export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { data: session } = useSession()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState<any>(null)
   const [cardInfo, setCardInfo] = useState<CardInfo | null>(null)
   const [walletBalance, setWalletBalance] = useState<number>(1000) // Simulated wallet balance
   const [transactions, setTransactions] = useState<Transaction[]>([])
+
+  // Use session data to restore user state on page refresh/navigation
+  useEffect(() => {
+    if (session?.user && !user) {
+      // Restore user from NextAuth session
+      const restoredUser: User = {
+        address: session.user.address || "",
+        email: session.user.email || undefined,
+        name: session.user.name || undefined,
+        provider: (session.user.provider as "circle" | "metamask") || "metamask"
+      }
+      
+      setUser(restoredUser)
+      
+      // Also restore card info from localStorage if available
+      const storedCardInfo = localStorage.getItem("autoflow_card_info")
+      if (storedCardInfo) {
+        try {
+          setCardInfo(JSON.parse(storedCardInfo))
+        } catch (e) {
+          console.error("Failed to parse stored card info:", e)
+        }
+      } else {
+        // Set default card info based on provider
+        setCardInfo({
+          isLinked: true,
+          balance: 450.00,
+          limit: 800,
+          lastFour: restoredUser.provider === "circle" ? "5432" : "1337",
+          status: "active",
+        })
+      }
+      
+      // Restore transactions from localStorage if available
+      const storedTransactions = localStorage.getItem("autoflow_transactions")
+      if (storedTransactions) {
+        try {
+          const parsedTransactions = JSON.parse(storedTransactions)
+          // Convert timestamp strings back to Date objects
+          const fixedTransactions = parsedTransactions.map((tx: any) => ({
+            ...tx,
+            timestamp: new Date(tx.timestamp)
+          }))
+          setTransactions(fixedTransactions)
+        } catch (e) {
+          console.error("Failed to parse stored transactions:", e)
+        }
+      }
+    }
+  }, [session, user])
+  
+  // Save card info and transactions to localStorage when they change
+  useEffect(() => {
+    if (cardInfo) {
+      localStorage.setItem("autoflow_card_info", JSON.stringify(cardInfo))
+    }
+  }, [cardInfo])
+  
+  useEffect(() => {
+    if (transactions.length > 0) {
+      localStorage.setItem("autoflow_transactions", JSON.stringify(transactions))
+    }
+  }, [transactions])
 
   // Check for stored MetaMask Card wallet on mount
   useEffect(() => {
@@ -472,9 +537,26 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [addTransaction])
 
   const disconnect = useCallback(async () => {
-    setUser(null)
-    setProvider(null)
-    setCardInfo(null)
+    setIsLoading(true)
+    try {
+      // First sign out from NextAuth
+      await signOut({ redirect: false })
+      
+      // Then clear local state
+      setUser(null)
+      setProvider(null)
+      setCardInfo(null)
+      
+      // Clear localStorage items
+      localStorage.removeItem("autoflow_card_info")
+      localStorage.removeItem("metamask_card_wallet")
+      
+      console.log("Disconnected wallet")
+    } catch (error) {
+      console.error("Disconnect failed:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   const getBalance = useCallback(async (): Promise<string> => {

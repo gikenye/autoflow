@@ -22,6 +22,8 @@ import { CardSpendSimulator } from "@/components/CardSpendSimulator"
 import { TransactionLog } from "@/components/TransactionLog"
 import { WalletToCardTransfer } from "@/components/WalletToCardTransfer"
 import { AaveYieldSpender } from "@/components/AaveYieldSpender"
+import MetaMaskCard from "@/pages/metamask-card"
+import { signOut, useSession } from "next-auth/react"
 
 // Mock data
 const mockData = {
@@ -39,7 +41,8 @@ const mockData = {
 }
 
 function AutoFlowAppContent() {
-  const { user, isConnected, cardInfo, getBalance } = useWallet()
+  const { data: session } = useSession()
+  const { user, isConnected, cardInfo, getBalance, disconnect } = useWallet()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [spendingMode, setSpendingMode] = useState("yield-only")
   const [creditLimit, setCreditLimit] = useState([50])
@@ -47,6 +50,9 @@ function AutoFlowAppContent() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [walletBalance, setWalletBalance] = useState("0")
   const [depositAmount, setDepositAmountState] = useState("0")
+  // Add states for MetaMask card actions
+  const [spendCount, setSpendCount] = useState(0)
+  const [depositCount, setDepositCount] = useState(0)
   
   // Update wallet balance when user changes or tab changes
   useEffect(() => {
@@ -67,6 +73,52 @@ function AutoFlowAppContent() {
     }
   }
 
+  // Add handlers for MetaMask card actions
+  const handleSpendClick = () => {
+    setSpendCount((prev) => prev + 1)
+    console.log("Spending yield...", spendCount + 1)
+    
+    // Simulate spending $10 from balance
+    const spendAmount = 10
+    mockData.balance = Math.max(0, mockData.balance - spendAmount)
+    
+    // Navigate to profile tab which contains the AaveYieldSpender component
+    setActiveTab("profile")
+    // Scroll to the AaveYieldSpender component after a short delay to ensure rendering
+    setTimeout(() => {
+      document.querySelector('.AaveYieldSpender')?.scrollIntoView({ behavior: 'smooth' })
+      // Show notification of successful spend
+      alert(`Successfully spent $${spendAmount} from your yield`)
+    }, 100)
+  }
+
+  // Add a function to actually process deposits when the main deposit button is clicked
+  const processDeposit = () => {
+    const amountField = document.getElementById("amount") as HTMLInputElement
+    if (amountField && amountField.value) {
+      const depositAmount = parseFloat(amountField.value)
+      if (!isNaN(depositAmount) && depositAmount > 0) {
+        console.log(`Processing deposit of $${depositAmount}...`)
+        // Update deposit count for tracking
+        setDepositCount((prev) => prev + 1)
+        
+        // Update mock balance
+        mockData.balance += depositAmount
+        
+        // Here you would typically call your API or blockchain transaction
+        // For now, show a success message
+        alert(`Successfully deposited $${depositAmount} USDC. New balance: $${mockData.balance.toLocaleString()}`)
+        
+        // Reset the field
+        amountField.value = ""
+        
+        // Return to dashboard to see updated balance
+        setActiveTab("dashboard")
+      }
+    }
+  }
+
+  // Header section with session info
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       {/* Header */}
@@ -83,18 +135,33 @@ function AutoFlowAppContent() {
               </div>
             </div>
 
-            {!isConnected ? (
-              <Button 
-                onClick={() => setShowAuthModal(true)} 
-                className="bg-green-600 hover:bg-green-700 text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
-                size="sm"
-              >
-                <span className="hidden sm:inline">Connect Wallet</span>
-                <span className="sm:hidden">Connect</span>
-              </Button>
-            ) : (
-              <WalletInfo />
-            )}
+            <div className="flex items-center gap-2">
+              {!isConnected ? (
+                <Button 
+                  onClick={() => setShowAuthModal(true)} 
+                  className="bg-green-600 hover:bg-green-700 text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
+                  size="sm"
+                >
+                  <span className="hidden sm:inline">Connect Wallet</span>
+                  <span className="sm:hidden">Connect</span>
+                </Button>
+              ) : (
+                <>
+                  <WalletInfo />
+                  <Button 
+                    onClick={() => {
+                      signOut({ redirect: false });
+                      disconnect();
+                    }} 
+                    variant="outline"
+                    size="sm"
+                    className="hidden sm:flex"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -260,146 +327,53 @@ function AutoFlowAppContent() {
 
             {/* Dashboard */}
             <TabsContent value="dashboard" className="space-y-6">
-              {/* Stats Cards */}
+              {/* Updated layout with MetaMask Card */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="border-green-200">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Your Balance</CardDescription>
-                    <CardTitle className="text-2xl text-green-700">${mockData.balance.toLocaleString()}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600">
-                      Earned today: <span className="text-green-600 font-medium">+${mockData.yieldEarned}</span>
-                    </p>
-                  </CardContent>
-                </Card>
+                {/* MetaMask Card - New UI */}
+                <div className="md:col-span-1">
+                  <MetaMaskCard
+                    cardholderName={user?.name ? user.name.toUpperCase() : session?.user?.name ? session.user.name.toUpperCase() : "AUTOFLOW USER"}
+                    balance={mockData.balance.toLocaleString()}
+                    walletAddress={user?.address ? `${user.address.substring(0, 6)}...${user.address.substring(user.address.length - 4)}` : "0xAbC1...DeF9"}
+                    expirationDate="08/27"
+                    lastFourDigits={cardInfo?.lastFour || "1337"}
+                    onSpendClick={handleSpendClick}
+                    onDepositClick={processDeposit}
+                  />
+                </div>
 
-                <Card className="border-green-200">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Credit Available</CardDescription>
-                    <CardTitle className="text-2xl text-blue-700">
-                      ${mockData.creditAvailable.toLocaleString()}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600">
-                      You can safely spend{" "}
-                      <span className="font-medium">${Math.floor(mockData.creditAvailable * 0.1)}</span>
-                    </p>
-                  </CardContent>
-                </Card>
+                {/* Stats Cards - Adjusted Layout */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="border-green-200">
+                    <CardHeader className="pb-3">
+                      <CardDescription>Credit Available</CardDescription>
+                      <CardTitle className="text-2xl text-blue-700">
+                        ${mockData.creditAvailable.toLocaleString()}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-600">
+                        You can safely spend{" "}
+                        <span className="font-medium">${Math.floor(mockData.creditAvailable * 0.1)}</span>
+                      </p>
+                    </CardContent>
+                  </Card>
 
-                <Card className="border-green-200">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Health Factor</CardDescription>
-                    <CardTitle className="text-2xl text-green-700">{mockData.healthFactor}%</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Progress value={mockData.healthFactor} className="h-2" />
-                    <p className="text-sm text-gray-600 mt-2">Excellent health</p>
-                  </CardContent>
-                </Card>
+                  <Card className="border-green-200">
+                    <CardHeader className="pb-3">
+                      <CardDescription>Health Factor</CardDescription>
+                      <CardTitle className="text-2xl text-green-700">{mockData.healthFactor}%</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Progress value={mockData.healthFactor} className="h-2" />
+                      <p className="text-sm text-gray-600 mt-2">Excellent health</p>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               {/* Card Spending Simulator */}
               <CardSpendSimulator />
-
-              {/* MetaMask Card Section */}
-              <Card className="border-blue-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <CreditCard className="w-5 h-5 text-blue-600" />
-                      <span>MetaMask Card</span>
-                    </div>
-                    {cardInfo?.isLinked ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        Active •••• {cardInfo.lastFour}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-orange-600 border-orange-300">
-                        Not Linked
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    {cardInfo?.isLinked 
-                      ? "Your MetaMask Card is connected and ready for spending" 
-                      : "Apply for a MetaMask Card to enable seamless spending"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {cardInfo?.isLinked ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <p className="text-sm text-blue-600 mb-1">Available Balance</p>
-                          <p className="text-2xl font-bold text-blue-800">
-                            ${cardInfo.balance?.toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600 mb-1">Credit Limit</p>
-                          <p className="text-2xl font-bold text-gray-800">
-                            ${cardInfo.limit?.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Zap className="w-4 h-4 text-green-600" />
-                          <span className="font-medium text-green-800">Smart Spending Active</span>
-                        </div>
-                        <p className="text-sm text-green-600">
-                          Your card automatically spends from yield first, then uses credit with auto-repay
-                        </p>
-                      </div>
-
-                      <Button 
-                        className="w-full bg-blue-600 hover:bg-blue-700" 
-                        onClick={() => setActiveTab("deposit")}
-                      >
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Manage Card Spending
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <CreditCard className="w-4 h-4 text-orange-600" />
-                          <span className="font-medium text-orange-800">MetaMask Card Required</span>
-                        </div>
-                        <p className="text-sm text-orange-600 mb-3">
-                          Get a MetaMask Card to enable seamless spending from your yield and credit
-                        </p>
-                        <ul className="text-sm text-orange-600 space-y-1">
-                          <li>✓ Spend directly from your crypto</li>
-                          <li>✓ Automatic yield-first spending</li>
-                          <li>✓ Smart credit with auto-repay</li>
-                          <li>✓ Real-time spending notifications</li>
-                        </ul>
-                      </div>
-
-                      <Button 
-                        className="w-full bg-orange-600 hover:bg-orange-700" 
-                        asChild
-                      >
-                        <a 
-                          href="https://metamask.io/card/" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center"
-                        >
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Apply for MetaMask Card
-                        </a>
-                      </Button>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
 
               {/* Spending Mode */}
               <Card className="border-green-200">
@@ -591,7 +565,7 @@ function AutoFlowAppContent() {
                     </div>
                   </div>
 
-                  <Button className="w-full bg-green-600 hover:bg-green-700" size="lg">
+                  <Button className="w-full bg-green-600 hover:bg-green-700" size="lg" onClick={processDeposit}>
                     <Plus className="w-4 h-4 mr-2" />
                     Deposit USDC
                   </Button>
@@ -826,6 +800,13 @@ function AutoFlowAppContent() {
 
       {/* Auth Modal */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      
+      {/* Debug info - remove in production */}
+      {(spendCount > 0 || depositCount > 0) && (
+        <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-sm">
+          Spend: {spendCount} | Deposit: {depositCount}
+        </div>
+      )}
     </div>
   )
 }

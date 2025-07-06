@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator"
 import { Wallet, Mail, Chrome, Loader2, CheckCircle, Copy, Check } from "lucide-react"
 import { onboardUser, isValidEmail, storeUserData, type OnboardingData } from "@/lib/circle-client"
 import { useGoogleLogin } from '@react-oauth/google'
+import { signIn, signOut, useSession } from "next-auth/react"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -32,6 +33,7 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const { data: session } = useSession()
   const { connect, isLoading } = useWallet()
   const [connectingMethod, setConnectingMethod] = useState<string | null>(null)
   const [showCircleForm, setShowCircleForm] = useState(false)
@@ -70,6 +72,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         // Connect with the created user data
         await connect("circle", result);
         
+        // Sign in with NextAuth to maintain session
+        await signIn("credentials", { 
+          email: googleEmail,
+          redirect: false
+        });
+        
         setTimeout(() => {
           onClose();
           resetState();
@@ -97,7 +105,20 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         googleLogin();
         return
       }
-      await connect(method)
+      
+      if (method === "metamask") {
+        const walletInfo = await connect(method)
+        
+        // Sign in with NextAuth to maintain session
+        if (walletInfo?.address) {
+          await signIn("credentials", { 
+            provider: "wallet",
+            address: walletInfo.address,
+            redirect: false
+          });
+        }
+      }
+      
       onClose()
     } catch (error) {
       console.error("Connection failed:", error)
@@ -129,6 +150,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       
       // Connect with the created user data
       await connect("circle", result)
+      
+      // Sign in with NextAuth to maintain session
+      await signIn("credentials", { 
+        email,
+        redirect: false
+      });
       
       setTimeout(() => {
         onClose()
@@ -162,6 +189,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     return `${address.slice(0, 8)}...${address.slice(-6)}`
   }
 
+  // Check if user is already authenticated from session
+  if (session?.user && !userData) {
+    // If authenticated via NextAuth but we don't have user data, close the modal
+    onClose();
+    return null;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
@@ -173,17 +207,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {userData ? (
           // Success State
           <>
-        <DialogHeader>
+            <DialogHeader>
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <DialogTitle className="text-center text-green-800">Welcome to AutoFlow!</DialogTitle>
               <DialogDescription className="text-center">
                 Your Circle Wallet has been created successfully
-          </DialogDescription>
-        </DialogHeader>
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="space-y-4">
+            <div className="space-y-4">
               <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                 <div className="flex items-center space-x-3 mb-3">
                   <Mail className="w-5 h-5 text-green-600" />
