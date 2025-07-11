@@ -1,97 +1,112 @@
 
 # 🌀 AutoFlow
 
-AutoFlow is a smart DeFi wallet that lets users **earn, manage, and spend yield** — all without needing to understand crypto.
+**AutoFlow** is a smart DeFi wallet that lets users **earn, manage, and spend on-chain yield** — without needing to understand crypto. It’s designed for everyday people who want to grow and use their money digitally, just like with a neobank — but powered by decentralized finance.
 
-It combines the power of **Circle**, **Aave**, and the **MetaMask SDK** to create a frictionless experience that feels like a digital neobank with yield-earning and spendable balances.
+Built on **Celo**, AutoFlow supports **Mento stable assets like USDC** to offer fast, low-cost, and mobile-first DeFi experiences to underserved communities.
 
 ---
 
-## 🚀 What It Does
+## 🚨 The Problem
 
-1. **Email Sign-Up (via Circle)**  
-   Users onboard with just an email — no seed phrase, no MetaMask required.
+Despite the potential of DeFi, most people can't use it. Seed phrases, gas fees, MetaMask popups — it’s too technical. Meanwhile, millions of people in frontier markets are underserved by traditional banking systems and can’t access savings tools that grow their money.
 
-2. **Auto-Deposit to Aave**  
-   Deposited USDC is routed to Aave to generate real-time yield.
+They don’t need more wallets.  
+They need **access, simplicity, and usability**.
 
-3. **Simulated MetaMask Card**  
-   Users can simulate spending their earnings using a "MetaMask Card" interface powered by MetaMask SDK and Circle smart wallets.
+---
 
-4. **Jargon-Free UI/UX**  
-   Built to feel like a normal finance app — no crypto lingo, no Web3 overload.
+## 💡 The Solution
+
+**AutoFlow** abstracts away crypto complexity into a **simple, seamless digital wallet** experience:
+
+- **Sign up with just an email** — no MetaMask or seed phrase needed
+- **Deposit USDC** — stored safely in a Circle custodial wallet
+- **Earn real yield via Aave** — funds are auto-deposited to on-chain lending pools
+- **Spend the yield** — via a simulated MetaMask Card built into the UI
+
+Under the hood, AutoFlow uses **Celo smart contracts**, **Circle wallets**, and **Mento stablecoins** to deliver a smooth, secure, and affordable experience tailored for mobile-first, real-world users.
+
+---
+
+## 🌍 Real-World Vision
+
+In the long run, **AutoFlow aims to become the DeFi-powered neobank** for users in emerging markets:
+
+- A nurse in rural Kenya can deposit USDC and automatically earn interest.
+- She receives a daily or weekly yield summary — visualized simply.
+- When she needs to pay for groceries or school fees, she clicks “Spend” and uses the yield from her MetaMask Card balance.
+- No tokens. No lingo. Just savings that work.
 
 ---
 
 ## 🔧 Tech Stack
 
-| Layer         | Technology                                |
-|--------------|--------------------------------------------|
-| **Smart Contract** | Solidity (Aave v3 + custom logic)       |
-| **Frontend**       | React, TailwindCSS                     |
-| **Backend**        | Node.js (Next.js API routes)           |
-| **Wallets**        | Circle Programmable Wallets SDK        |
-| **Card Utility**   | MetaMask SDK (for simulation & linking)|
-| **Chain**          | Ethereum Sepolia (Testnet)             |
+| Layer             | Technology                              |
+|------------------|------------------------------------------|
+| **Smart Contracts**   | Solidity, deployed on **Celo testnet**     |
+| **Frontend**          | React, TailwindCSS                     |
+| **Backend**           | Node.js / Next.js API routes           |
+| **Wallets**           | Circle Developer-Controlled Wallets    |
+| **Card Utility**      | MetaMask SDK (simulated card interface) |
+| **DeFi Yield**        | Aave v3 on Celo                        |
+| **Stablecoins**       | Mento USDC (`0x...`)                   |
 
 ---
 
 ## 🔗 Integrations
 
-- **Circle Developer-Controlled Wallets**  
-  For user onboarding, custody, and off-chain wallet management using USDC.
-
-- **Aave v3**  
-  To generate yield using pooled USDC from users.
-
-- **MetaMask SDK**  
-  For connecting MetaMask wallets and simulating card-like spending experiences.
+- **Circle Wallets**: Custodial wallet creation and treasury management  
+- **Aave v3**: Yield generation via USDC lending  
+- **MetaMask SDK**: Simulated card-style spend experience  
+- **Celo**: Eco-friendly, low-gas Layer 1 optimized for mobile  
+- **Mento USDC**: Stable asset for deposits and yield
 
 ---
 
-## 🏗 Features
+## 🧪 Features
 
-- ✅ Email-based onboarding via Circle
-- ✅ Supply and withdraw USDC from Aave
-- ✅ Simulated MetaMask Card spend from yield
-- ✅ Friendly, mobile-optimized UI
-- ✅ Admin dashboard to monitor yield and transfers
+✅ Email onboarding (no crypto wallet needed)  
+✅ Automatic yield generation on deposits  
+✅ Simulated MetaMask Card to “spend” yield  
+✅ Friendly UI for mobile & desktop  
+✅ Admin dashboard to monitor yield flow and balances
 
 ---
 
-## ⚙️ How It Works
+## 🛠 How It Works
 
 1. **User signs up via Circle**  
-   → Auto-creates a Circle wallet (custodial).
+   → Creates a developer-controlled wallet in the background
 
-2. **User connects MetaMask (optional)**  
-   → Links a public EVM wallet for simulation.
+2. **User deposits USDC**  
+   → Sent to a smart contract and deposited to Aave on Celo
 
-3. **USDC deposited**  
-   → Sent to AutoFlow contract and supplied to Aave.
+3. **Yield is generated**  
+   → Periodically calculated via smart contract or backend logic
 
-4. **Yield simulation begins**  
-   → Backend fetches Aave data or mocks simulated yield based on time and principal.
+4. **User "spends" from card UI**  
+   → Transfers balance to a dedicated Circle wallet linked to the card
 
-5. **User “spends” yield via MetaMask Card**  
-   → Transfers simulated yield to a Circle wallet designated as `circleMetaMaskCard`.
-
----
-
-## 📁 Directory Structure
-
-```
-/contracts           # Solidity contracts (Aave interactions)
-/pages/api           # API routes (Circle, transfers)
-/components          # React UI components
-/lib                 # Circle SDK helpers
-/hooks               # Custom React hooks (wallets, contract)
-/public              # Static assets
-```
+5. **Optional MetaMask linking**  
+   → User can connect a MetaMask wallet for tracking or additional control
 
 ---
 
-## 🛠 Setup Instructions
+## 📁 Directory Overview
+
+```
+/contracts           # Solidity smart contracts (Aave, Celo logic)
+/pages/api           # Backend logic (Circle SDK, transfers)
+/components          # React UI (Card, Wallets, Dashboard)
+/lib                 # Helper functions for Circle & blockchain
+/hooks               # Custom React logic for wallet handling
+/public              # Assets, logos, icons
+```
+
+---
+
+## ⚙️ Setup Guide
 
 1. **Clone the repo**
 
@@ -106,18 +121,18 @@ It combines the power of **Circle**, **Aave**, and the **MetaMask SDK** to creat
    npm install
    ```
 
-3. **Add environment variables**
+3. **Configure environment**
 
-   Create a `.env.local` file:
+   Create `.env.local` with your credentials:
 
    ```ini
    CIRCLE_API_KEY=your_circle_key
    CIRCLE_TREASURY_WALLET_ID=your_treasury_wallet_id
-   CONTRACT_ADDRESS=your_deployed_contract_address
-   ALCHEMY_API_KEY=your_alchemy_key
+   CONTRACT_ADDRESS=your_celo_contract
+   CELO_RPC_URL=https://alfajores-forno.celo-testnet.org
    ```
 
-4. **Run locally**
+4. **Start the project**
 
    ```bash
    npm run dev
@@ -125,30 +140,31 @@ It combines the power of **Circle**, **Aave**, and the **MetaMask SDK** to creat
 
 ---
 
-## 🧠 Challenges
+## 🧠 Challenges Faced
 
-- Bridging off-chain Circle logic with on-chain Aave yield flows  
-- Making DeFi UX friendly for non-crypto users  
-- Simulating a card-like experience without issuing real cards  
+- Bridging custodial (Circle) and non-custodial (Celo/Aave) logic  
+- Simulating realistic card-like UX without actual card issuance  
+- Designing for non-crypto users while using crypto-native infrastructure
 
 ---
 
 ## 🏁 What’s Next
 
-- Real on-chain card issuing (via MetaMask Snaps or Visa partners)  
-- Real-time yield tracking via The Graph  
-- Yield sharing between users  
-- Mobile-native PWA version  
+- Deploy contracts to **Celo mainnet**  
+- Real-time yield tracking via **The Graph** or subgraphs  
+- Enable **fiat on/off ramps** (e.g. Mobile Money ↔ USDC)  
+- Pilot testing in Kenya and Nigeria  
+- Explore **Celo dAppStore** integration  
+- Work toward **real MetaMask Card** or Visa partnership
 
 ---
 
-## 🤝 Team
+## 🤝 Built By
 
-Built for the **MetaMask Card Dev Cook-Off**  
-By **[Gikenye]**
+**[Gikenye]** — Product-focused dev building inclusive Web3 experiences for everyday Africans.
 
 ---
 
-## 📄 License
+## 📜 License
 
-**MIT**
+MIT
